@@ -12,7 +12,7 @@ namespace TicketManager.DbContexts.Base
         TEntity FirstOrDefault(Expression<Func<TEntity, bool>> exp);
         TEntity FirstOrDefault();
         List<TEntity> List();
-        IEnumerable<TEntity> Search();
+        IQueryable<TEntity> Search();
         IQueryable<TEntity> Where(Expression<Func<TEntity, bool>> exp);
     }
 }

@@ -7,5 +7,6 @@ namespace TicketManager.Data.Casos
         Guid Adicionar(Caso caso);
         void Excluir(Guid id);
         bool NumeroExiste(int numero);
+        IQueryable<Caso> Recuperar();
     }
 }

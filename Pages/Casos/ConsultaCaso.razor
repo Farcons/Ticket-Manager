@@ -89,7 +89,7 @@
                     <td>@(t.Problema?.Length > 100 ? t.Problema.Substring(0,100) + "..." : t.Problema)</td>
                     <td>@(t.Solucao?.Length > 100 ? t.Solucao.Substring(0,100) + "..." : t.Solucao)</td>
                     <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary me-1" href="@($"/editar/{t.Id}")">Editar</a>
+                        <a class="btn btn-sm btn-outline-primary me-1" href="@($"/editar?Id={t.Id.ToString()}")">Editar</a>
                         <button class="btn btn-sm btn-outline-danger" @onclick="(()=>Excluir(t.Id))">Excluir</button>
                     </td>
                 </tr>
@@ -144,7 +144,7 @@
 
     protected override void OnInitialized()
     {
-        all = repCaso.List();
+        all = repCaso.Recuperar().ToList();
         clientes = repCliente.List();
         filtered = all.ToList();
         AtualizarModulosDropdown();
@@ -237,7 +237,7 @@
     {
         if (!await JS.InvokeAsync<bool>("confirm", $"Confirmar exclusão do ticket {id}?")) return;
         repCaso.Excluir(id);
-        all = repCaso.Search();
+        all = repCaso.Recuperar();
         AplicarFiltros();
     }
 }

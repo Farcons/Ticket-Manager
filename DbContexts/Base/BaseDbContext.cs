@@ -16,7 +16,7 @@ namespace TicketManager.DbContexts.Base
             _dbSet = _dbContext.Set<TEntity>();
         }
 
-        public IEnumerable<TEntity> Search()
+        public IQueryable<TEntity> Search()
         {
             return _dbContext.Set<TEntity>();
         }
@@ -77,5 +77,18 @@ namespace TicketManager.DbContexts.Base
         public DbSet<Caso> Caso { get; set; }
         public DbSet<Cliente> Cliente { get; set; }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Caso>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.HasOne(x => x.Cliente)
+                .WithMany()
+                .HasForeignKey(x => x.CodigoCliente);
+            });
+        }
     }
 }

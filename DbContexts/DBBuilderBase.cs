@@ -9,7 +9,7 @@ namespace TicketManager.DbContexts
     {
         public void ModelCreating(WebApplicationBuilder builder)
         {
-            builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=casos.db"));
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite("Data Source=casos.db").UseLazyLoadingProxies());
 
             builder.Services.AddScoped<IRepCaso, RepCaso>();
             builder.Services.AddScoped<IRepCliente, RepCliente>();

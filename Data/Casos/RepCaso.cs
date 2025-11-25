@@ -1,4 +1,5 @@
-﻿using TicketManager.DbContexts.Base;
+﻿using Microsoft.EntityFrameworkCore;
+using TicketManager.DbContexts.Base;
 
 namespace TicketManager.Data.Casos
 {
@@ -20,6 +21,11 @@ namespace TicketManager.Data.Casos
             _dbContext.Remove(caso);
 
             SaveChanges();
+        }
+
+        public IQueryable<Caso> Recuperar()
+        {
+            return _dbSet.Include(p => p.Cliente);
         }
 
         public bool NumeroExiste(int numero) => _dbSet.Any(p => p.Numero == numero);
