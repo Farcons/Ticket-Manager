@@ -1,0 +1,48 @@
+﻿@page "/clientes"
+@inject IRepCliente repCliente
+@using TicketManager.Data.Clientes
+
+
+<h3>Clientes</h3>
+<a class="btn btn-primary mb-3" href="/clientes/cadastro">Novo Cliente</a>
+
+
+@if (lista is null)
+{
+    <p>Carregando...</p>
+}
+else if (!lista.Any())
+{
+    <p>Nenhum cliente cadastrado.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Id</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in lista)
+            {
+                <tr>
+                    <td>@c.Nome</td>
+                    <td>@c.Id</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    List<Cliente> lista;
+
+
+    protected override void OnInitialized()
+    {
+        lista = repCliente.Search().OrderBy(p=>p.Nome).ToList();
+    }
+}

@@ -1,0 +1,87 @@
+﻿@page "/relatorio"
+@inject IRepCaso repCaso
+@inject IJSRuntime JS
+
+@using TicketManager.Data
+@using TicketManager.Data.Casos
+@using TicketManager.Data.Enums
+
+<h3>Relatório Mensal</h3>
+
+<div class="card p-3 mb-3" style="max-width:600px;">
+    <div class="row g-2">
+        <div class="col-md-4">
+            <select class="form-control" @bind="selectedMonth">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input class="form-control" type="number" @bind="selectedYear" />
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" @onclick="GerarRelatorio">Gerar Relatório CSV</button>
+        </div>
+    </div>
+</div>
+
+@if (grouped != null)
+{
+    <div class="card p-3">
+        <h5>Resumo</h5>
+        @foreach (var kv in grouped)
+        {
+            <div class="mb-2">
+                <div><strong>@kv.Key.GetDescription()</strong></div>
+                <ul>
+                    @foreach (var m in kv.Value)
+                    {
+                        <li>@m.Key.GetFriendlyModuleName(): @m.Value</li>
+                    }
+                </ul>
+            </div>
+        }
+        <div class="mt-2">
+            <button class="btn btn-outline-success" @onclick="ExportarRelatorioCsv">Exportar CSV</button>
+        </div>
+    </div>
+}
+
+@code {
+    int selectedMonth = DateTime.Now.Month;
+    int selectedYear = DateTime.Now.Year;
+
+    Dictionary<EnumSistema, Dictionary<EnumModulos, int>>? grouped;
+
+    void GerarRelatorio()
+    {
+        var periodStart = new DateTime(selectedYear, selectedMonth, 1);
+        var periodEnd = periodStart.AddMonths(1).AddTicks(-1);
+        var filtered = repCaso.Where(t => t.Data >= periodStart && t.Data <= periodEnd).ToList();
+
+        grouped = filtered
+            .GroupBy(t => t.Sistema)
+            .ToDictionary(
+                g => g.Key,
+                g => g.GroupBy(t => t.Modulo).ToDictionary(gg => gg.Key, gg => gg.Count())
+            );
+    }
+
+    async Task ExportarRelatorioCsv()
+    {
+        if (grouped == null) return;
+
+        var lines = new List<string> { "Sistema;Modulo;Quantidade" };
+        foreach (var kv in grouped)
+        {
+            foreach (var mod in kv.Value)
+            {
+                lines.Add($"{kv.Key.GetDescription()};{mod.Key.GetFriendlyModuleName()};{mod.Value}");
+            }
+        }
+        var csv = string.Join("\n", lines);
+        await JS.InvokeVoidAsync("ticketManager.downloadFile", $"relatorio_{selectedYear}_{selectedMonth:00}.csv", csv);
+    }
+}

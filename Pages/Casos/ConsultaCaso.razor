@@ -1,0 +1,243 @@
+﻿@page "/consulta"
+@inject IRepCaso repCaso
+@inject IRepCliente repCliente
+@inject IJSRuntime JS
+
+@using TicketManager.Data
+@using TicketManager.Data.Casos
+@using TicketManager.Data.Clientes
+@using TicketManager.Data.Enums
+@using TicketManager.Data.Exportador
+
+<h3>Consulta de Casos</h3>
+
+<div class="mb-3 card p-3">
+    <div class="row g-2">
+        <div class="col-md-2">
+            <input class="form-control" placeholder="Número" type="number" @bind="fNumero" />
+        </div>
+        <div class="col-md-3">
+            <select class="form-control" @bind="fCliente" >
+                <option value=""> Todos os clientes</option>
+                @foreach (var c in clientes)
+                {
+                    <option value="@c.Id">@c.Nome</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+                <select class="form-control" @bind="fSistema">
+                <option value="">Todos os Sistemas</option>
+                @foreach (EnumSistema s in Enum.GetValues(typeof(EnumSistema)))
+                {
+                    <option value="@((int)s)">@s.GetDescription()</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select class="form-control" @bind="fModulo">
+                <option value="">Todos os Módulos</option>
+                @foreach (var m in modulosFiltrados)
+                {
+                    <option value="@((int)m)">@m.GetFriendlyModuleName()</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input class="form-control" placeholder="Texto (Problema / Solução)" @bind="fTexto" />
+        </div>
+    </div>
+
+    <div class="row g-2 mt-2">
+        <div class="col-md-3">
+            <input class="form-control" type="date" @bind="fDataInicio" />
+        </div>
+        <div class="col-md-3">
+            <input class="form-control" type="date" @bind="fDataFim" />
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-secondary me-2" @onclick="LimparFiltros">Limpar</button>
+            <button class="btn btn-primary me-2" @onclick="AplicarFiltros">Aplicar</button>
+            <button class="btn btn-outline-success" @onclick="ExportarCsv">Exportar CSV</button>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3">
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Sistema</th>
+                <th>Módulo</th>
+                <th>Problema</th>
+                <th>Solução</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in paginaAtual)
+            {
+                <tr>
+                    <td>@t.Data.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@t.Numero</td>
+                    <td>@t.Cliente.ToString()</td>
+                    <td><span class="@t.Sistema.GetSistemaBadgeClass()">@t.Sistema.GetDescription()</span></td>
+                    <td><span class="@t.Modulo.GetModuloBadgeClass()">@t.Modulo.GetFriendlyModuleName()</span></td>
+                    <td>@(t.Problema?.Length > 100 ? t.Problema.Substring(0,100) + "..." : t.Problema)</td>
+                    <td>@(t.Solucao?.Length > 100 ? t.Solucao.Substring(0,100) + "..." : t.Solucao)</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary me-1" href="@($"/editar/{t.Id}")">Editar</a>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="(()=>Excluir(t.Id))">Excluir</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- paginação simples -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div>Mostrando @((currentPage-1)*pageSize + 1)-@(((currentPage-1)*pageSize)+paginaAtual.Count()) de @filtered.Count()</div>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary me-1" @onclick="PrevPage" disabled="@(currentPage==1)">Prev</button>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    IEnumerable<Caso> all = [];
+    List<Caso> filtered = new();
+    List<Caso> paginaAtual = new();
+    private int? _fSistema;
+    List<Cliente> clientes = new();
+
+    // filtros
+    int? fNumero;
+
+    Guid? fCliente { get; set; }
+
+    int? fSistema
+    {
+        get => _fSistema;
+        set
+        {
+            _fSistema = value;
+            AtualizarModulosDropdown();
+        }
+    }
+
+    int? fModulo;
+    string? fTexto;
+    DateTime? fDataInicio;
+    DateTime? fDataFim;
+
+    // modulos filtrados para dropdown
+    List<EnumModulos> modulosFiltrados = new();
+
+    // paginação
+    int currentPage = 1;
+    int pageSize = 10;
+    int totalPages = 1;
+
+    protected override void OnInitialized()
+    {
+        all = repCaso.List();
+        clientes = repCliente.List();
+        filtered = all.ToList();
+        AtualizarModulosDropdown();
+        ApplyPagination();
+        // registra atalhos JS (Ctrl+N já no site.js)
+        JS.InvokeVoidAsync("ticketManager.registerShortcuts");
+    }
+
+    void AtualizarModulosDropdown()
+    {
+        if (fSistema.HasValue)
+        {
+            modulosFiltrados = fSistema.Value switch
+            {
+                (int)EnumSistema.M2 => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 1000 && (int)m < 2000)).ToList(),
+                (int)EnumSistema.CRM => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 2000 && (int)m < 3000)).ToList(),
+                (int)EnumSistema.PCP => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 3000 && (int)m < 4000)).ToList(),
+                _ => new()
+            };
+        }
+        else
+        {
+            modulosFiltrados = new();
+        }
+    }
+
+    void AplicarFiltros()
+    {
+        filtered = all.Where(t =>
+        {
+            if (fNumero.HasValue && t.Numero != fNumero.Value) return false;
+            if (fCliente.HasValue && t.CodigoCliente != fCliente.Value) return false;
+            if (fSistema.HasValue && (int)t.Sistema != fSistema.Value) return false;
+            if (fModulo.HasValue && (int)t.Modulo != fModulo.Value) return false;
+            if (!string.IsNullOrWhiteSpace(fTexto))
+            {
+                var txt = fTexto!.ToLower();
+                if (!((t.Problema ?? "").ToLower().Contains(txt) || (t.Solucao ?? "").ToLower().Contains(txt))) return false;
+            }
+            if (fDataInicio.HasValue && t.Data < fDataInicio.Value.Date) return false;
+            if (fDataFim.HasValue && t.Data > fDataFim.Value.Date.AddDays(1).AddTicks(-1)) return false;
+            return true;
+        }).ToList();
+
+        currentPage = 1;
+        ApplyPagination();
+    }
+
+    void LimparFiltros()
+    {
+        fNumero = null;
+        fCliente = null;
+        fSistema = null;
+        fModulo = null;
+        fTexto = null;
+        fDataInicio = null;
+        fDataFim = null;
+        filtered = all.ToList();
+        modulosFiltrados = new();
+        currentPage = 1;
+        ApplyPagination();
+    }
+
+    void ApplyPagination()
+    {
+        totalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)pageSize));
+        paginaAtual = filtered.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
+        StateHasChanged();
+    }
+
+    void NextPage()
+    {
+        if (currentPage < totalPages) currentPage++;
+        ApplyPagination();
+    }
+
+    void PrevPage()
+    {
+        if (currentPage > 1) currentPage--;
+        ApplyPagination();
+    }
+
+    async Task ExportarCsv()
+    {
+        var csv = CsvExporter.ExportarParaCsv(filtered);
+        await JS.InvokeVoidAsync("ticketManager.downloadFile", $"tickets_{DateTime.Now:yyyyMMdd_HHmm}.csv", csv);
+    }
+
+    async Task Excluir(Guid id)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Confirmar exclusão do ticket {id}?")) return;
+        repCaso.Excluir(id);
+        all = repCaso.Search();
+        AplicarFiltros();
+    }
+}

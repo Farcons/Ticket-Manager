@@ -1,0 +1,207 @@
+﻿@page "/editar/{id:int}"
+@inject IRepCaso repCaso
+@inject IRepCliente repCliente
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@using TicketManager.Data
+@using TicketManager.Data.Casos
+@using TicketManager.Data.Clientes
+@using TicketManager.Data.Enums
+
+<h3>Editar Caso</h3>
+
+@if (caso == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <div class="card p-3" style="max-width:700px;">
+        <div class="form-group">
+            <label>Número</label>
+            <input class="form-control" @bind="caso.Numero" type="number" />
+        </div>
+
+        <div class="form-group mt-2">
+            <label>Cliente</label>
+            <input class="form-control" @bind="caso.Cliente" />
+        </div>
+
+        <!-- Cliente -->
+        <div class="form-group mt-2">
+            <label>Cliente *</label>
+
+            <select class="form-control @(erroCliente ? "is-invalid" : "")"
+                    @bind="caso.CodigoCliente">
+
+                <option value="">Selecione...</option>
+
+                @foreach (var c in clientes)
+                {
+                    <option value="@c.Id">@c.Nome</option>
+                }
+            </select>
+
+            @if (erroCliente)
+            {
+                <div class="invalid-feedback">Cliente obrigatório.</div>
+            }
+        </div>
+
+        <div class="form-group mt-2">
+            <label>Módulo</label>
+            <select class="form-control" @bind="caso.Modulo">
+                @foreach (var m in modulosFiltrados)
+                {
+                    <option value="@m">@m.GetFriendlyModuleName()</option>
+                }
+            </select>
+        </div>
+
+        <div class="form-group mt-2">
+            <label>Problema</label>
+            <textarea class="form-control" @bind="caso.Problema"></textarea>
+        </div>
+
+        <div class="form-group mt-2">
+            <label>Solução</label>
+            <textarea class="form-control" @bind="caso.Solucao"></textarea>
+        </div>
+
+        <div class="mt-3">
+            <button class="btn btn-primary me-2" @onclick="Salvar">Salvar (Ctrl+Enter)</button>
+            <button class="btn btn-danger" @onclick="ConfirmExcluir">Excluir</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid id { get; set; }
+
+    Caso? caso;
+    List<Cliente> clientes = new();
+    List<EnumModulos> modulosFiltrados = new();
+    bool erroNumero, erroCliente, erroSistema, erroModulo;
+    string? mensagem;
+    string? numeroTexto;
+
+    private EnumSistema selectedSistema
+    {
+        get => caso?.Sistema ?? EnumSistema.M2;
+        set
+        {
+            if (caso != null)
+            {
+                caso.Sistema = value;
+                AtualizarModulos();
+                caso.Modulo = modulosFiltrados.FirstOrDefault();
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        caso = repCaso.Find(id);
+        if (caso == null) return;
+        clientes = repCliente.List();
+        AtualizarModulos();
+        // registra o shortcut de salvar via JS passando o .NET reference
+        JS.InvokeVoidAsync("ticketManager.registerSaveShortcut", DotNetObjectReference.Create(this));
+    }
+
+    private void AtualizarModulos()
+    {
+        if (caso == null) { modulosFiltrados = new(); return; }
+        modulosFiltrados = caso.Sistema switch
+        {
+            EnumSistema.M2 => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 1000 && (int)m < 2000)).ToList(),
+            EnumSistema.CRM => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 2000 && (int)m < 3000)).ToList(),
+            EnumSistema.PCP => Enum.GetValues<EnumModulos>().Cast<EnumModulos>().Where(m => ((int)m >= 3000 && (int)m < 4000)).ToList(),
+            _ => new()
+        };
+    }
+
+    void Salvar()
+    {
+        // Reset erros
+        erroNumero = erroCliente = erroSistema = erroModulo = false;
+        bool invalido = false;
+
+        // Validar Número
+        if (string.IsNullOrWhiteSpace(numeroTexto))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else if (!int.TryParse(numeroTexto, out int numeroParsed))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else if (repCaso.NumeroExiste(numeroParsed))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else
+        {
+            caso.Numero = numeroParsed;
+        }
+
+        // Validar Cliente
+        if (caso.CodigoCliente == Guid.Empty)
+        {
+            erroCliente = true;
+            invalido = true;
+        }
+
+        // Validar Sistema
+        if (!Enum.IsDefined(typeof(EnumSistema), caso.Sistema))
+        {
+            erroSistema = true;
+            invalido = true;
+        }
+
+        // Validar Módulo
+        if (!Enum.IsDefined(typeof(EnumModulos), caso.Modulo))
+        {
+            erroModulo = true;
+            invalido = true;
+        }
+
+        if (invalido)
+        {
+            mensagem = "Preencha todos os campos obrigatórios corretamente.";
+            return;
+        }
+
+        // Salvar
+        repCaso.Adicionar(caso);
+        mensagem = "Ticket salvo com sucesso!";
+
+        // Limpar tela
+        caso = new Caso
+        {
+            Sistema = selectedSistema
+        };
+
+        numeroTexto = null;
+
+        AtualizarModulos();
+    }
+
+    [JSInvokable]
+    public void OnShortcutSave()
+    {
+        Salvar();
+        Nav.NavigateTo("/consulta");
+    }
+
+    async Task ConfirmExcluir()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Confirmar exclusão do ticket #{caso?.Id}?")) return;
+        if (caso != null) repCaso.Excluir(caso.Id);
+        Nav.NavigateTo("/consulta");
+    }
+}

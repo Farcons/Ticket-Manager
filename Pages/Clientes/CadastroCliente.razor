@@ -1,0 +1,54 @@
+﻿@page "/clientes/cadastro"
+@inject IRepCliente repCliente
+@inject NavigationManager Nav
+@using TicketManager.Data.Clientes
+
+
+<h3>Cadastrar Cliente</h3>
+<div class="card p-3" style="max-width:500px;">
+    <div class="form-group">
+        <label>Nome *</label>
+        <input class="form-control @(erroNome ? "is-invalid" : "")" @bind="cliente.Nome" />
+    </div>
+
+
+    <button class="btn btn-primary mt-3" @onclick="Salvar">Salvar</button>
+    <a class="btn btn-secondary mt-3 ms-2" href="/clientes">Voltar</a>
+
+
+    @if (!string.IsNullOrEmpty(msg))
+    {
+        <div class="alert alert-info mt-2">@msg</div>
+    }
+</div>
+
+
+@code {
+    Cliente cliente = new();
+    string msg;
+    bool erroNome = false;
+
+
+    void Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(cliente.Nome))
+        {
+            erroNome = true;
+            msg = "Nome é obrigatório.";
+            return;
+        }
+
+        if (repCliente.NomeExiste(cliente.Nome))
+        {
+            erroNome = true;
+            msg = "Nome já está em uso";
+            return;
+        }
+
+
+        repCliente.Adicionar(cliente);
+        msg = "Cliente salvo com sucesso!";
+
+        cliente = new Cliente();
+    }
+}

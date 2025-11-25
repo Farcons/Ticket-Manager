@@ -1,0 +1,227 @@
+﻿@page "/cadastro"
+@inject IRepCaso repCaso
+@inject IRepCliente repCliente
+@inject IJSRuntime JS
+@using TicketManager.Data
+@using TicketManager.Data.Casos
+@using TicketManager.Data.Clientes
+@using TicketManager.Data.Enums
+
+<h3>Cadastrar Caso</h3>
+
+<div class="card p-3" style="max-width:700px;">
+
+    <!-- Número -->
+    <div class="form-group">
+        <label>Número *</label>
+        <input class="form-control @(erroNumero ? "is-invalid" : "")"
+               @bind="numeroTexto"
+               type="number" />
+        @if (erroNumero)
+        {
+            <div class="invalid-feedback">Número inválido ou já utilizado.</div>
+        }
+    </div>
+
+    <!-- Cliente -->
+    <div class="form-group mt-2">
+        <label>Cliente *</label>
+
+        <select class="form-control @(erroCliente ? "is-invalid" : "")"
+                @bind="caso.CodigoCliente">
+
+            <option value="">Selecione...</option>
+
+            @foreach (var c in clientes)
+            {
+                <option value="@c.Id">@c.Nome</option>
+            }
+        </select>
+
+        @if (erroCliente)
+        {
+            <div class="invalid-feedback">Cliente obrigatório.</div>
+        }
+    </div>
+
+    <!-- Sistema -->
+    <div class="form-group mt-2">
+        <label>Sistema *</label>
+        <select class="form-control @(erroSistema ? "is-invalid" : "")"
+                @bind="selectedSistema">
+            @foreach (EnumSistema s in Enum.GetValues(typeof(EnumSistema)))
+            {
+                <option value="@s">@s.GetDescription()</option>
+            }
+        </select>
+        @if (erroSistema)
+        {
+            <div class="invalid-feedback">Sistema obrigatório.</div>
+        }
+    </div>
+
+    <!-- Módulo -->
+    <div class="form-group mt-2">
+        <label>Módulo *</label>
+        <select class="form-control @(erroModulo ? "is-invalid" : "")"
+                @bind="caso.Modulo">
+            @foreach (var m in modulosFiltrados)
+            {
+                <option value="@m">@m.GetFriendlyModuleName()</option>
+            }
+        </select>
+        @if (erroModulo)
+        {
+            <div class="invalid-feedback">Módulo obrigatório.</div>
+        }
+    </div>
+
+    <!-- Problema -->
+    <div class="form-group mt-2">
+        <label>Problema</label>
+        <textarea class="form-control" @bind="caso.Problema"></textarea>
+    </div>
+
+    <!-- Solução -->
+    <div class="form-group mt-2">
+        <label>Solução</label>
+        <textarea class="form-control" @bind="caso.Solucao"></textarea>
+    </div>
+
+    <div class="mt-3">
+        <button class="btn btn-primary me-2" @onclick="Salvar">
+            Salvar (Ctrl+Enter)
+        </button>
+        <a class="btn btn-secondary" href="/consulta">Voltar</a>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="alert alert-info mt-2">@mensagem</div>
+    }
+</div>
+
+@code {
+    Caso caso = new();
+    string? mensagem;
+    string? numeroTexto;
+    List<Cliente> clientes = new();
+    List<EnumModulos> modulosFiltrados = new();
+    bool erroNumero, erroCliente, erroSistema, erroModulo;
+
+    private EnumSistema selectedSistema
+    {
+        get => caso.Sistema;
+        set
+        {
+            if (caso.Sistema != value)
+            {
+                caso.Sistema = value;
+                AtualizarModulos();
+                caso.Modulo = modulosFiltrados.FirstOrDefault();
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        caso = new Caso
+        {
+            Sistema = EnumSistema.M2
+        };
+        
+        clientes = repCliente.List();
+
+        AtualizarModulos();
+
+        JS.InvokeVoidAsync("ticketManager.registerSaveShortcut",
+            DotNetObjectReference.Create(this));
+    }
+
+    void AtualizarModulos()
+    {
+        modulosFiltrados = caso.Sistema switch
+        {
+            EnumSistema.M2 => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 1000 && (int)m < 2000).ToList(),
+            EnumSistema.CRM => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 2000 && (int)m < 3000).ToList(),
+            EnumSistema.PCP => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 3000 && (int)m < 4000).ToList(),
+            _ => new()
+        };
+    }
+
+    void Salvar()
+    {
+        // Reset erros
+        erroNumero = erroCliente = erroSistema = erroModulo = false;
+        bool invalido = false;
+
+        // Validar Número
+        if (string.IsNullOrWhiteSpace(numeroTexto))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else if (!int.TryParse(numeroTexto, out int numeroParsed))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else if (repCaso.NumeroExiste(numeroParsed))
+        {
+            erroNumero = true;
+            invalido = true;
+        }
+        else
+        {
+            caso.Numero = numeroParsed;
+        }
+
+        // Validar Cliente
+        if (caso.CodigoCliente == Guid.Empty)
+        {
+            erroCliente = true;
+            invalido = true;
+        }
+
+        // Validar Sistema
+        if (!Enum.IsDefined(typeof(EnumSistema), caso.Sistema))
+        {
+            erroSistema = true;
+            invalido = true;
+        }
+
+        // Validar Módulo
+        if (!Enum.IsDefined(typeof(EnumModulos), caso.Modulo))
+        {
+            erroModulo = true;
+            invalido = true;
+        }
+
+        if (invalido)
+        {
+            mensagem = "Preencha todos os campos obrigatórios corretamente.";
+            return;
+        }
+
+        // Salvar
+        repCaso.Adicionar(caso);
+        mensagem = "Ticket salvo com sucesso!";
+
+        // Limpar tela
+        caso = new Caso
+        {
+            Sistema = selectedSistema,
+        };
+
+        numeroTexto = null;
+
+        AtualizarModulos();
+    }
+
+    [JSInvokable]
+    public void OnShortcutSave()
+    {
+        Salvar();
+        InvokeAsync(StateHasChanged);
+    }
+}

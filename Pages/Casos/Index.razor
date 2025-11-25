@@ -1,0 +1,61 @@
+﻿@page "/"
+@inject IRepCaso repCaso
+@using TicketManager.Data
+@using TicketManager.Data.Casos
+@using TicketManager.Data.Enums
+
+<h3>Dashboard</h3>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Totais por Sistema</h5>
+            @foreach (EnumSistema s in Enum.GetValues(typeof(EnumSistema)))
+            {
+                var count = totals.ContainsKey(s) ? totals[s] : 0;
+                <div class="d-flex justify-content-between align-items-center">
+                    <div><span class="@s.GetSistemaBadgeClass()">@s.GetDescription()</span></div>
+                    <div><strong>@count</strong></div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card p-3">
+            <h5>Últimos Tickets</h5>
+            <ul class="list-group">
+                @foreach (var t in lastTickets)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div>
+                            <div><strong>@t.Numero</strong> - @t.Cliente</div>
+                            <div class="small text-muted">@t.Data.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                        <div class="text-end">
+                            <div><span class="@t.Sistema.GetSistemaBadgeClass()">@t.Sistema.GetDescription()</span></div>
+                            <div><span class="@t.Modulo.GetModuloBadgeClass()">@t.Modulo.GetFriendlyModuleName()</span></div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    IEnumerable<Caso> all = [];
+    Dictionary<EnumSistema, int> totals = new();
+    List<Caso> lastTickets = new();
+
+    protected override void OnInitialized()
+    {
+        all = repCaso.Search();
+        totals = all.GroupBy(t => t.Sistema).ToDictionary(g => g.Key, g => g.Count());
+        lastTickets = all.OrderByDescending(t => t.Data).Take(8).ToList();
+        // registra atalhos para abrir cadastro (Ctrl+N)
+        JS.InvokeVoidAsync("ticketManager.registerShortcuts");
+    }
+
+    [Inject] IJSRuntime JS { get; set; }
+}
