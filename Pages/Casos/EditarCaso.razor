@@ -80,7 +80,6 @@ else
     List<EnumModulos> modulosFiltrados = new();
     bool erroNumero, erroCliente, erroSistema, erroModulo;
     string? mensagem;
-    string? numeroTexto;
 
     private EnumSistema selectedSistema
     {
@@ -125,24 +124,15 @@ else
         bool invalido = false;
 
         // Validar Número
-        if (string.IsNullOrWhiteSpace(numeroTexto))
+        if (caso.Numero == 0)
         {
             erroNumero = true;
             invalido = true;
         }
-        else if (!int.TryParse(numeroTexto, out int numeroParsed))
+        else if (repCaso.NumeroExiste(caso.Id, caso.Numero))
         {
             erroNumero = true;
             invalido = true;
-        }
-        else if (repCaso.NumeroExiste(numeroParsed))
-        {
-            erroNumero = true;
-            invalido = true;
-        }
-        else
-        {
-            caso.Numero = numeroParsed;
         }
 
         // Validar Cliente
@@ -173,25 +163,17 @@ else
         }
 
         // Salvar
-        repCaso.Adicionar(caso);
+        repCaso.PersistirTransacao();
         mensagem = "Ticket salvo com sucesso!";
 
-        // Limpar tela
-        caso = new Caso
-        {
-            Sistema = selectedSistema
-        };
-
-        numeroTexto = null;
-
-        AtualizarModulos();
+        Nav.NavigateTo("/consulta");
     }
 
     [JSInvokable]
     public void OnShortcutSave()
     {
         Salvar();
-        Nav.NavigateTo("/consulta");
+        
     }
 
     async Task ConfirmExcluir()

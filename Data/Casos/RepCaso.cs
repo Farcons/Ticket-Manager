@@ -5,6 +5,8 @@ namespace TicketManager.Data.Casos
 {
     public class RepCaso(AppDbContext dbContext) : BaseDbContext<Caso>(dbContext), IRepCaso
     {
+        public void PersistirTransacao() => SaveChanges();
+
         public Guid Adicionar(Caso caso)
         {
             caso.Id = Guid.NewGuid();
@@ -29,5 +31,6 @@ namespace TicketManager.Data.Casos
         }
 
         public bool NumeroExiste(int numero) => _dbSet.Any(p => p.Numero == numero);
+        public bool NumeroExiste(Guid idDesconsiderar, int numero) => _dbSet.Any(p => p.Numero == numero && p.Id != idDesconsiderar);
     }
 }

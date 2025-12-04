@@ -144,7 +144,7 @@
 
     protected override void OnInitialized()
     {
-        all = repCaso.Recuperar().ToList();
+        all = repCaso.Recuperar().OrderByDescending(p => p.Data);
         clientes = repCliente.List();
         filtered = all.ToList();
         AtualizarModulosDropdown();
@@ -237,7 +237,7 @@
     {
         if (!await JS.InvokeAsync<bool>("confirm", $"Confirmar exclusão do ticket {id}?")) return;
         repCaso.Excluir(id);
-        all = repCaso.Recuperar();
+        all = repCaso.Recuperar().OrderByDescending(p => p.Data);
         AplicarFiltros();
     }
 }
