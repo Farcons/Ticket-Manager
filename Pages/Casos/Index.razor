@@ -14,7 +14,7 @@
             {
                 var count = totals.ContainsKey(s) ? totals[s] : 0;
                 <div class="d-flex justify-content-between align-items-center">
-                    <div><span class="@s.GetSistemaBadgeClass()">@s.GetDescription()</span></div>
+                <div><span class="@s.GetSistemaBadgeClass()" style="@s.GetSistemaBadgeStyle()">@s.GetDescription()</span></div>
                     <div><strong>@count</strong></div>
                 </div>
             }
@@ -33,8 +33,8 @@
                             <div class="small text-muted">@t.Data.ToString("dd/MM/yyyy HH:mm")</div>
                         </div>
                         <div class="text-end">
-                            <div><span class="@t.Sistema.GetSistemaBadgeClass()">@t.Sistema.GetDescription()</span></div>
-                            <div><span class="@t.Modulo.GetModuloBadgeClass()">@t.Modulo.GetFriendlyModuleName()</span></div>
+                            <div><span class="@t.Sistema.GetSistemaBadgeClass()" style="@t.Sistema.GetSistemaBadgeStyle()">@t.Sistema.GetDescription()</span></div>
+                            <div><span class="@t.Modulo.GetModuloBadgeClass()" style="@t.Modulo.GetModuloBadgeStyle()">@t.Modulo.GetFriendlyModuleName()</span></div>
                         </div>
                     </li>
                 }

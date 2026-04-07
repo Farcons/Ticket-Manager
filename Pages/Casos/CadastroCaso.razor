@@ -1,10 +1,8 @@
 ﻿@page "/cadastro"
 @inject IRepCaso repCaso
-@inject IRepCliente repCliente
 @inject IJSRuntime JS
 @using TicketManager.Data
 @using TicketManager.Data.Casos
-@using TicketManager.Data.Clientes
 @using TicketManager.Data.Enums
 
 <h3>Cadastrar Caso</h3>
@@ -27,16 +25,7 @@
     <div class="form-group mt-2">
         <label>Cliente *</label>
 
-        <select class="form-control @(erroCliente ? "is-invalid" : "")"
-                @bind="caso.CodigoCliente">
-
-            <option value="">Selecione...</option>
-
-            @foreach (var c in clientes)
-            {
-                <option value="@c.Id">@c.Nome</option>
-            }
-        </select>
+        <SelectCliente @bind-Value="caso.CodigoCliente" IsInvalid="erroCliente" />
 
         @if (erroCliente)
         {
@@ -76,6 +65,12 @@
         }
     </div>
 
+    <!-- Tempo Decorrido -->
+    <div class="form-group mt-2">
+        <label>Tempo Decorrido (HH:MM)</label>
+        <input class="form-control" @bind="tempoTexto" type="text" placeholder="00:00" pattern="\d{2}:\d{2}" />
+    </div>
+
     <!-- Problema -->
     <div class="form-group mt-2">
         <label>Problema</label>
@@ -105,9 +100,14 @@
     Caso caso = new();
     string? mensagem;
     string? numeroTexto;
-    List<Cliente> clientes = new();
     List<EnumModulos> modulosFiltrados = new();
     bool erroNumero, erroCliente, erroSistema, erroModulo;
+
+    string tempoTexto
+    {
+        get => caso.TempoDecorrido ?? "00:00";
+        set => caso.TempoDecorrido = value;
+    }
 
     private EnumSistema selectedSistema
     {
@@ -129,8 +129,6 @@
         {
             Sistema = EnumSistema.M2
         };
-        
-        clientes = repCliente.List();
 
         AtualizarModulos();
 
@@ -145,6 +143,10 @@
             EnumSistema.M2 => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 1000 && (int)m < 2000).ToList(),
             EnumSistema.CRM => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 2000 && (int)m < 3000).ToList(),
             EnumSistema.PCP => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 3000 && (int)m < 4000).ToList(),
+            EnumSistema.SERVICOS => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 4000 && (int)m < 5000).ToList(),
+            EnumSistema.CONTRATOS => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 5000 && (int)m < 6000).ToList(),
+            EnumSistema.LOJA => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 6000 && (int)m < 7000).ToList(),
+            EnumSistema.DFE => Enum.GetValues<EnumModulos>().Where(m => (int)m >= 7000 && (int)m < 8000).ToList(),
             _ => new()
         };
     }

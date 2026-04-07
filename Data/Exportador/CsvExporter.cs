@@ -7,7 +7,7 @@ namespace TicketManager.Data.Exportador
         public static string ExportarParaCsv(IEnumerable<Casos.Caso> tickets)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("Id;Numero;Cliente;Sistema;Modulo;Problema;Solucao;Data");
+            sb.AppendLine("Id;Numero;Cliente;Sistema;Modulo;Problema;Solucao;Data;TempoDecorrido");
 
             foreach (var t in tickets)
             {
@@ -23,7 +23,8 @@ namespace TicketManager.Data.Exportador
                     t.Modulo.ToString(),
                     Safe(t.Problema),
                     Safe(t.Solucao),
-                    t.Data.ToString("yyyy-MM-dd HH:mm:ss")
+                    t.Data.ToString("yyyy-MM-dd HH:mm:ss"),
+                    t.TempoDecorrido ?? "00:00"
                 ]);
 
                 sb.AppendLine(line);

@@ -1,11 +1,9 @@
 ﻿@page "/consulta"
 @inject IRepCaso repCaso
-@inject IRepCliente repCliente
 @inject IJSRuntime JS
 
 @using TicketManager.Data
 @using TicketManager.Data.Casos
-@using TicketManager.Data.Clientes
 @using TicketManager.Data.Enums
 @using TicketManager.Data.Exportador
 
@@ -17,13 +15,7 @@
             <input class="form-control" placeholder="Número" type="number" @bind="fNumero" />
         </div>
         <div class="col-md-3">
-            <select class="form-control" @bind="fCliente" >
-                <option value=""> Todos os clientes</option>
-                @foreach (var c in clientes)
-                {
-                    <option value="@c.Id">@c.Nome</option>
-                }
-            </select>
+            <SelectCliente @bind-Value="fClienteValue" Placeholder="Todos os clientes" />
         </div>
         <div class="col-md-2">
                 <select class="form-control" @bind="fSistema">
@@ -74,6 +66,7 @@
                 <th>Módulo</th>
                 <th>Problema</th>
                 <th>Solução</th>
+                <th>Tempo</th>
                 <th></th>
             </tr>
         </thead>
@@ -84,10 +77,11 @@
                     <td>@t.Data.ToString("dd/MM/yyyy HH:mm")</td>
                     <td>@t.Numero</td>
                     <td>@t.Cliente.ToString()</td>
-                    <td><span class="@t.Sistema.GetSistemaBadgeClass()">@t.Sistema.GetDescription()</span></td>
-                    <td><span class="@t.Modulo.GetModuloBadgeClass()">@t.Modulo.GetFriendlyModuleName()</span></td>
+                    <td><span class="@t.Sistema.GetSistemaBadgeClass()" style="@t.Sistema.GetSistemaBadgeStyle()">@t.Sistema.GetDescription()</span></td>
+                    <td><span class="@t.Modulo.GetModuloBadgeClass()" style="@t.Modulo.GetModuloBadgeStyle()">@t.Modulo.GetFriendlyModuleName()</span></td>
                     <td>@(t.Problema?.Length > 100 ? t.Problema.Substring(0,100) + "..." : t.Problema)</td>
                     <td>@(t.Solucao?.Length > 100 ? t.Solucao.Substring(0,100) + "..." : t.Solucao)</td>
+                    <td>@t.TempoDecorrido</td>
                     <td class="text-end">
                         <a class="btn btn-sm btn-outline-primary me-1" href="@($"/editar?Id={t.Id.ToString()}")">Editar</a>
                         <button class="btn btn-sm btn-outline-danger" @onclick="(()=>Excluir(t.Id))">Excluir</button>
@@ -112,12 +106,12 @@
     List<Caso> filtered = new();
     List<Caso> paginaAtual = new();
     private int? _fSistema;
-    List<Cliente> clientes = new();
 
     // filtros
     int? fNumero;
 
-    Guid? fCliente { get; set; }
+    Guid fClienteValue { get; set; }
+    Guid? fCliente => fClienteValue == Guid.Empty ? null : fClienteValue;
 
     int? fSistema
     {
@@ -145,7 +139,6 @@
     protected override void OnInitialized()
     {
         all = repCaso.Recuperar().OrderByDescending(p => p.Data);
-        clientes = repCliente.List();
         filtered = all.ToList();
         AtualizarModulosDropdown();
         ApplyPagination();
@@ -196,7 +189,7 @@
     void LimparFiltros()
     {
         fNumero = null;
-        fCliente = null;
+        fClienteValue = Guid.Empty;
         fSistema = null;
         fModulo = null;
         fTexto = null;

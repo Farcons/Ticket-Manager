@@ -11,6 +11,6 @@
         Personalizacao = 1006,
         Receber = 1007,
         Tesouraria = 1008,
-        Vendas = 1009
+        Vendas = 1009,
     }
 }

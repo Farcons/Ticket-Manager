@@ -13,6 +13,7 @@ public class Caso : SystemBaseIdentifier
     public string Problema { get; set; }
     public string Solucao { get; set; }
     public DateTime Data { get; set; } = DateTime.Now;
+    public string TempoDecorrido { get; set; } = "00:00";
 
     public virtual Cliente Cliente { get; set; }
 }

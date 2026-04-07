@@ -1,12 +1,10 @@
 ﻿@page "/editar"
 @inject IRepCaso repCaso
-@inject IRepCliente repCliente
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
 @using TicketManager.Data
 @using TicketManager.Data.Casos
-@using TicketManager.Data.Clientes
 @using TicketManager.Data.Enums
 
 <h3>Editar Caso</h3>
@@ -26,22 +24,7 @@ else
         <!-- Cliente -->
         <div class="form-group mt-2">
             <label>Cliente *</label>
-
-            <select class="form-control @(erroCliente ? "is-invalid" : "")"
-                    @bind="caso.CodigoCliente">
-
-                <option value="">Selecione...</option>
-
-                @foreach (var c in clientes)
-                {
-                    <option value="@c.Id">@c.Nome</option>
-                }
-            </select>
-
-            @if (erroCliente)
-            {
-                <div class="invalid-feedback">Cliente obrigatório.</div>
-            }
+            <SelectCliente @bind-Value="caso.CodigoCliente" IsInvalid="erroCliente" />
         </div>
 
         <div class="form-group mt-2">
@@ -64,6 +47,12 @@ else
             <textarea class="form-control" @bind="caso.Solucao"></textarea>
         </div>
 
+        <!-- Tempo Decorrido -->
+        <div class="form-group mt-2">
+            <label>Tempo Decorrido (HH:MM)</label>
+            <input class="form-control" @bind="tempoTexto" type="text" placeholder="00:00" pattern="\d{2}:\d{2}" />
+        </div>
+
         <div class="mt-3">
             <button class="btn btn-primary me-2" @onclick="Salvar">Salvar (Ctrl+Enter)</button>
             <button class="btn btn-danger" @onclick="ConfirmExcluir">Excluir</button>
@@ -76,10 +65,15 @@ else
     [SupplyParameterFromQuery] public string id { get; set; }
 
     Caso? caso;
-    List<Cliente> clientes = new();
     List<EnumModulos> modulosFiltrados = new();
     bool erroNumero, erroCliente, erroSistema, erroModulo;
     string? mensagem;
+
+    string tempoTexto
+    {
+        get => caso?.TempoDecorrido ?? "00:00";
+        set { if (caso != null) caso.TempoDecorrido = value; }
+    }
 
     private EnumSistema selectedSistema
     {
@@ -99,9 +93,7 @@ else
     {
         caso = repCaso.Find(Guid.Parse(id));
         if (caso == null) return;
-        clientes = repCliente.List();
         AtualizarModulos();
-        // registra o shortcut de salvar via JS passando o .NET reference
         JS.InvokeVoidAsync("ticketManager.registerSaveShortcut", DotNetObjectReference.Create(this));
     }
 
@@ -119,11 +111,9 @@ else
 
     void Salvar()
     {
-        // Reset erros
         erroNumero = erroCliente = erroSistema = erroModulo = false;
         bool invalido = false;
 
-        // Validar Número
         if (caso.Numero == 0)
         {
             erroNumero = true;
@@ -135,21 +125,18 @@ else
             invalido = true;
         }
 
-        // Validar Cliente
         if (caso.CodigoCliente == Guid.Empty)
         {
             erroCliente = true;
             invalido = true;
         }
 
-        // Validar Sistema
         if (!Enum.IsDefined(typeof(EnumSistema), caso.Sistema))
         {
             erroSistema = true;
             invalido = true;
         }
 
-        // Validar Módulo
         if (!Enum.IsDefined(typeof(EnumModulos), caso.Modulo))
         {
             erroModulo = true;
@@ -162,10 +149,8 @@ else
             return;
         }
 
-        // Salvar
         repCaso.PersistirTransacao();
         mensagem = "Ticket salvo com sucesso!";
-
         Nav.NavigateTo("/consulta");
     }
 
@@ -173,7 +158,6 @@ else
     public void OnShortcutSave()
     {
         Salvar();
-        
     }
 
     async Task ConfirmExcluir()
@@ -183,7 +167,7 @@ else
         Nav.NavigateTo("/consulta");
     }
 
-    async Task Voltar()
+    private void Voltar()
     {
         Nav.NavigateTo("/consulta");
     }

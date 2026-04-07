@@ -1,0 +1,44 @@
+@inject IRepCliente repCliente
+
+@inject IRepCliente repCliente
+
+@using TicketManager.Data.Clientes
+
+<select class="form-control @(IsInvalid ? "is-invalid" : "")"
+        value="@Value"
+        @onchange="OnChange">
+
+    <option value="@Guid.Empty">@Placeholder</option>
+
+    @foreach (var c in clientes)
+    {
+        <option value="@c.Id">@c.Nome</option>
+    }
+</select>
+
+@if (IsInvalid)
+{
+    <div class="invalid-feedback">@ErrorMessage</div>
+}
+
+@code {
+    [Parameter] public Guid Value { get; set; }
+    [Parameter] public EventCallback<Guid> ValueChanged { get; set; }
+    [Parameter] public bool IsInvalid { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Todos os clientes";
+    [Parameter] public string ErrorMessage { get; set; } = "Cliente obrigatório.";
+
+    List<Cliente> clientes = new();
+
+    protected override void OnInitialized()
+    {
+        clientes = repCliente.Search().OrderBy(c => c.Nome).ToList();
+    }
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        Value = Guid.TryParse(val, out var guid) ? guid : Guid.Empty;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

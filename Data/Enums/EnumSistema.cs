@@ -12,5 +12,17 @@ namespace TicketManager.Data.Enums
 
         [Description("CRM")]
         CRM = 2,
+
+        [Description("Serviços")]
+        SERVICOS = 3,
+
+        [Description("Contratos")]
+        CONTRATOS = 4,
+
+        [Description("Loja")]
+        LOJA = 5,
+
+        [Description("DF-E")]
+        DFE = 6,
     }
 }
